@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --app-bg: #ffffff;
+  --app-panel: #f7f7f6;
+  --app-border: #e5e5e3;
+  --app-text-primary: #1a1a1a;
+  --app-text-secondary: #6b6b68;
+  --app-accent: #0f766e;
+  --app-accent-hover: #0d5f58;
+  --cred-high: #0f766e;
+  --cred-medium: #b45309;
+  --cred-low: #9ca3af;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  background: var(--app-bg);
+  color: var(--app-text-primary);
+}
+
+* {
+  box-sizing: border-box;
+}

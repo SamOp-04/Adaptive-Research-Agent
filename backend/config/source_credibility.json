@@ -1,0 +1,57 @@
+{
+  "weights": {
+    "tier": 0.5,
+    "recency": 0.25,
+    "citation": 0.15,
+    "domain_match": 0.1
+  },
+  "recency_decay_days": 540,
+  "min_score_threshold": 0.35,
+  "blocklist": [
+    "pinterest.com",
+    "quora.com"
+  ],
+  "tiers": {
+    "high": {
+      "score": 0.95,
+      "domains": [
+        "nature.com",
+        "science.org",
+        "nih.gov",
+        "who.int",
+        "worldbank.org",
+        "oecd.org",
+        "sec.gov",
+        "federalreserve.gov",
+        "gov.uk",
+        "europa.eu",
+        "arxiv.org",
+        "edu",
+        "gov"
+      ]
+    },
+    "medium": {
+      "score": 0.72,
+      "domains": [
+        "reuters.com",
+        "apnews.com",
+        "ft.com",
+        "economist.com",
+        "bloomberg.com",
+        "statista.com",
+        "mckinsey.com",
+        "gartner.com"
+      ]
+    },
+    "low": {
+      "score": 0.42,
+      "domains": [
+        "medium.com",
+        "substack.com",
+        "wikipedia.org",
+        "reddit.com"
+      ]
+    }
+  },
+  "default_tier_score": 0.55
+}

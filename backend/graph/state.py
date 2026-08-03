@@ -29,6 +29,7 @@ class SourceFinding(TypedDict, total=False):
 class ResearchState(TypedDict, total=False):
     session_id: str
     query: str
+    conversation_context: str
     query_type: Literal["factual", "analytical", "comparative", "exploratory"]
     depth: Depth
     output_type: OutputType
@@ -46,10 +47,12 @@ def initial_state(
     *,
     session_id: str | None = None,
     output_type: OutputType | None = None,
+    conversation_context: str | None = None,
 ) -> ResearchState:
     return {
         "session_id": session_id or str(uuid4()),
         "query": query,
+        "conversation_context": conversation_context or "",
         "depth": "standard",
         "output_type": output_type or "text",
         "sub_questions": [],

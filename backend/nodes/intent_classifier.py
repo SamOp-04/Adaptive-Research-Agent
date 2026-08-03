@@ -20,6 +20,9 @@ INTENT_CLASSIFIER_SYSTEM = (
 
 INTENT_CLASSIFIER_PROMPT = """Classify this research request.
 
+Recent conversation context, if it helps resolve a follow-up:
+{conversation_context}
+
 User request:
 {query}
 
@@ -77,7 +80,7 @@ def _infer_query_type(query: str) -> QueryType:
 async def classify_intent(state: ResearchState) -> ResearchState:
     query = state.get("query", "")
     current_output_type = state.get("output_type")
-    llm_classification = await _classify_with_llm(query)
+    llm_classification = await _classify_with_llm(query, state.get("conversation_context", ""))
     if llm_classification:
         output_type = _resolve_output_type(
             llm_classification["output_type"],
@@ -96,13 +99,19 @@ async def classify_intent(state: ResearchState) -> ResearchState:
     }
 
 
-async def _classify_with_llm(query: str) -> dict[str, str] | None:
+async def _classify_with_llm(query: str, conversation_context: str = "") -> dict[str, str] | None:
     if not query.strip():
         return None
 
     messages = [
         {"role": "system", "content": INTENT_CLASSIFIER_SYSTEM},
-        {"role": "user", "content": INTENT_CLASSIFIER_PROMPT.format(query=query)},
+        {
+            "role": "user",
+            "content": INTENT_CLASSIFIER_PROMPT.format(
+                query=query,
+                conversation_context=conversation_context or "None",
+            ),
+        },
     ]
     try:
         raw = await OllamaClient().chat(messages)

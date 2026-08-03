@@ -1,13 +1,13 @@
 "use client";
 
 import { FormEvent, useEffect, useRef, useState } from "react";
-import { ChevronDown, Loader2 } from "lucide-react";
+import { ChevronDown, Loader2, Plus, Square } from "lucide-react";
 
 import { FileDownloadCard } from "@/components/FileDownloadCard";
 import { MessageBubble } from "@/components/MessageBubble";
 import { StepTrace } from "@/components/StepTrace";
 import { openChatStream } from "@/lib/sse";
-import type { ChatMessage, OutputType, StepEvent } from "@/types/agent";
+import type { ChatMessage, FileArtifact, OutputType, StepEvent } from "@/types/agent";
 
 const outputOptions: Array<{ label: string; value: OutputType | "auto" }> = [
   { label: "Auto", value: "auto" },
@@ -24,6 +24,10 @@ function makeId() {
     : `${Date.now()}-${Math.random()}`;
 }
 
+function isFileArtifact(artifact: ChatMessage["artifact"]): artifact is FileArtifact {
+  return artifact?.type === "docx" || artifact?.type === "pdf" || artifact?.type === "file";
+}
+
 const emptyPrompts = [
   "Compare the credibility of recent AI regulations in the US and EU.",
   "Turn the latest findings on battery recycling into a concise table.",
@@ -36,6 +40,7 @@ export function ChatWindow() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [steps, setSteps] = useState<StepEvent[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const closeStreamRef = useRef<(() => void) | null>(null);
   const messageListRef = useRef<HTMLDivElement | null>(null);
   const messageEndRef = useRef<HTMLDivElement | null>(null);
@@ -83,10 +88,14 @@ export function ChatWindow() {
       {
         message,
         outputType: outputType === "auto" ? undefined : outputType,
+        sessionId: sessionId ?? undefined,
       },
       {
         onStep: (event) => setSteps((current) => [...current, event]),
         onComplete: (payload) => {
+          if (payload.session_id) {
+            setSessionId(payload.session_id);
+          }
           setMessages((current) => [
             ...current,
             {
@@ -120,12 +129,42 @@ export function ChatWindow() {
     );
   }
 
+  function handleStopStreaming() {
+    closeStreamRef.current?.();
+    closeStreamRef.current = null;
+    setIsStreaming(false);
+    setSteps((current) => [
+      ...current,
+      {
+        step: "client",
+        status: "failed",
+        message: "Stream stopped by user",
+        timestamp: new Date().toISOString(),
+      },
+    ]);
+  }
+
+  function handleNewChat() {
+    closeStreamRef.current?.();
+    closeStreamRef.current = null;
+    setInput("");
+    setMessages([]);
+    setSteps([]);
+    setSessionId(null);
+    setIsStreaming(false);
+  }
+
   function handleTextareaKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === "Enter" && !event.shiftKey) {
       event.preventDefault();
       event.currentTarget.form?.requestSubmit();
     }
   }
+
+  const latestFileArtifact = [...messages]
+    .reverse()
+    .map((message) => message.artifact)
+    .find(isFileArtifact);
 
   return (
     <div className="mx-auto flex min-h-full min-h-0 max-w-7xl flex-col gap-4 px-4 py-4 md:grid md:h-full md:grid-cols-[minmax(0,1fr)_320px] md:px-6">
@@ -134,10 +173,30 @@ export function ChatWindow() {
           <p className="text-sm font-medium text-[var(--app-accent)]">Adaptive Research Agent</p>
           <div className="mt-1 flex items-center justify-between gap-3">
             <h1 className="text-2xl font-semibold tracking-normal text-[var(--app-text-primary)]">Research workspace</h1>
-            <span className="inline-flex items-center gap-2 rounded-full border border-[var(--app-border)] bg-[var(--app-bg)] px-3 py-1 text-xs font-medium text-[var(--app-text-secondary)]">
-              <ChevronDown className="h-3.5 w-3.5" />
-              Auto-scroll active
-            </span>
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={handleNewChat}
+                className="inline-flex items-center gap-2 rounded-full border border-[var(--app-border)] bg-[var(--app-bg)] px-3 py-1 text-xs font-medium text-[var(--app-text-secondary)] transition hover:border-[var(--app-accent)] hover:text-[var(--app-accent)]"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                New chat
+              </button>
+              {isStreaming ? (
+                <button
+                  type="button"
+                  onClick={handleStopStreaming}
+                  className="inline-flex items-center gap-2 rounded-full border border-[var(--app-border)] bg-[var(--app-bg)] px-3 py-1 text-xs font-medium text-[var(--app-text-secondary)] transition hover:border-[var(--app-accent)] hover:text-[var(--app-accent)]"
+                >
+                  <Square className="h-3.5 w-3.5" />
+                  Stop
+                </button>
+              ) : null}
+              <span className="inline-flex items-center gap-2 rounded-full border border-[var(--app-border)] bg-[var(--app-bg)] px-3 py-1 text-xs font-medium text-[var(--app-text-secondary)]">
+                <ChevronDown className="h-3.5 w-3.5" />
+                Auto-scroll active
+              </span>
+            </div>
           </div>
         </header>
 
@@ -241,12 +300,20 @@ export function ChatWindow() {
         <div className="md:min-h-0 md:flex-1 md:overflow-y-auto">
           <StepTrace steps={steps} />
         </div>
-        <FileDownloadCard
-          fileName="Generated reports appear here"
-          fileType="docx/pdf"
-          href="#"
-          disabled
-        />
+        {latestFileArtifact ? (
+          <FileDownloadCard
+            fileName={latestFileArtifact.fileName ?? "Generated report"}
+            fileType={latestFileArtifact.type}
+            href={latestFileArtifact.href}
+          />
+        ) : (
+          <FileDownloadCard
+            fileName="Generated reports appear here"
+            fileType="docx/pdf"
+            href="#"
+            disabled
+          />
+        )}
       </aside>
     </div>
   );

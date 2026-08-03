@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 import sys
 
+from backend.files.markdown_rendering import inline_markdown_to_html, markdown_to_html
 from backend.graph.state import SourceFinding
 
 
@@ -24,8 +25,8 @@ def write_pdf(
     from weasyprint import HTML
 
     destination = Path(path)
-    body = "".join(f"<p>{escape(paragraph)}</p>" for paragraph in content.split("\n\n") if paragraph.strip())
-    findings_html = "".join(f"<li>{escape(finding)}</li>" for finding in key_findings or [])
+    body = markdown_to_html(content)
+    findings_html = "".join(f"<li>{inline_markdown_to_html(finding)}</li>" for finding in key_findings or [])
     sources_html = "".join(
         "<li>"
         f"<span class=\"cred-badge {_credibility_class(source)}\">[{_credibility_tier(source)}]</span>"
@@ -45,7 +46,16 @@ def write_pdf(
           body {{ font-family: 'Inter', 'Helvetica', sans-serif; margin: 40px; color: #1a1a1a; }}
           h1 {{ font-size: 22px; color: #0f766e; border-bottom: 2px solid #0f766e; padding-bottom: 8px; }}
           h2 {{ font-size: 16px; margin-top: 24px; color: #1a1a1a; border-bottom: 1px solid #e5e5e3; padding-bottom: 4px; }}
+          h3, h4 {{ color: #0f766e; margin: 18px 0 8px; }}
+          p {{ font-size: 13px; line-height: 1.5; }}
           li {{ margin-bottom: 6px; font-size: 13px; }}
+          table {{ border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 12px; }}
+          th, td {{ border: 1px solid #d4d4d0; padding: 6px 8px; vertical-align: top; }}
+          th {{ background: #f7f7f6; text-align: left; }}
+          code {{ background: #f7f7f6; padding: 1px 3px; font-family: monospace; }}
+          pre {{ background: #f7f7f6; padding: 10px; overflow-wrap: anywhere; }}
+          hr {{ border: 0; border-top: 1px solid #e5e5e3; margin: 16px 0; }}
+          a {{ color: #0f766e; }}
           .source {{ font-size: 11px; color: #6b6b68; }}
           .cred-badge {{ font-size: 10px; font-weight: 600; margin-right: 6px; }}
           .cred-high {{ color: #0f766e; }}

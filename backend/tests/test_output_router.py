@@ -8,7 +8,7 @@ from backend.nodes.output_router import _classify_output_with_llm, output_router
 
 @pytest.mark.asyncio
 async def test_intent_classifier_uses_llm_output_type(monkeypatch):
-    async def fake_classify_with_llm(query: str):
+    async def fake_classify_with_llm(query: str, conversation_context: str = ""):
         return {
             "query_type": "comparative",
             "depth": "standard",
@@ -25,7 +25,7 @@ async def test_intent_classifier_uses_llm_output_type(monkeypatch):
 
 @pytest.mark.asyncio
 async def test_intent_classifier_falls_back_to_keywords(monkeypatch):
-    async def fake_classify_with_llm(query: str):
+    async def fake_classify_with_llm(query: str, conversation_context: str = ""):
         return None
 
     monkeypatch.setattr("backend.nodes.intent_classifier._classify_with_llm", fake_classify_with_llm)

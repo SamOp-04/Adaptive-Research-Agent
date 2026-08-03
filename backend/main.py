@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from pathlib import Path
+from time import time
 
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -37,6 +39,7 @@ from backend.sse.events import to_sse_payload
 async def lifespan(app: FastAPI):
     await init_db()
     GENERATED_FILES_DIR.mkdir(parents=True, exist_ok=True)
+    _cleanup_generated_files()
     yield
 
 
@@ -72,10 +75,12 @@ async def health() -> dict[str, str]:
 
 @app.post("/chat")
 async def chat(request: ChatRequest, db: AsyncSession = Depends(get_db)) -> dict[str, object]:
+    conversation_context = await _recent_session_context(db, request.session_id)
     state = await run_research_graph(
         request.message,
         session_id=request.session_id,
         output_type=request.output_type,
+        conversation_context=conversation_context,
     )
     await _persist_chat_turn(db, request.message, state)
     return {
@@ -94,9 +99,21 @@ async def chat_stream(
     q: str,
     session_id: str | None = None,
     output_type: OutputType | None = None,
+    db: AsyncSession = Depends(get_db),
 ) -> EventSourceResponse:
+    conversation_context = await _recent_session_context(db, session_id)
+
     async def events():
-        async for event in stream_research_graph(q, session_id=session_id, output_type=output_type):
+        async for event in stream_research_graph(
+            q,
+            session_id=session_id,
+            output_type=output_type,
+            conversation_context=conversation_context,
+        ):
+            if event.get("step") == "complete":
+                payload = event.get("payload")
+                if isinstance(payload, dict):
+                    await _persist_chat_turn(db, q, payload)
             yield to_sse_payload(event)
 
     return EventSourceResponse(events())
@@ -114,11 +131,30 @@ async def get_messages(session_id: str, db: AsyncSession = Depends(get_db)) -> l
             "content": message.content,
             "output_type": message.output_type,
             "artifact": message.artifact,
-            "output_payload": message.artifact,
             "created_at": message.created_at.isoformat(),
         }
         for message in result.scalars().all()
     ]
+
+
+async def _recent_session_context(db: AsyncSession, session_id: str | None) -> str:
+    if not session_id:
+        return ""
+
+    result = await db.execute(
+        select(Message)
+        .where(Message.session_id == session_id)
+        .order_by(Message.created_at.desc())
+        .limit(8)
+    )
+    messages = list(reversed(result.scalars().all()))
+    lines: list[str] = []
+    for message in messages:
+        role = "User" if message.role == "user" else "Assistant"
+        content = " ".join(message.content.split())
+        if content:
+            lines.append(f"{role}: {content[:650]}")
+    return "\n".join(lines)[-4000:]
 
 
 async def _persist_chat_turn(db: AsyncSession, user_message: str, state: dict[str, object]) -> None:
@@ -143,3 +179,19 @@ async def _persist_chat_turn(db: AsyncSession, user_message: str, state: dict[st
         )
     )
     await db.commit()
+
+
+def _cleanup_generated_files(*, max_age_seconds: int = 7 * 24 * 60 * 60) -> None:
+    cutoff = time() - max_age_seconds
+    for path in GENERATED_FILES_DIR.glob("*"):
+        if not _is_generated_document(path):
+            continue
+        try:
+            if path.stat().st_mtime < cutoff:
+                path.unlink()
+        except OSError:
+            continue
+
+
+def _is_generated_document(path: Path) -> bool:
+    return path.is_file() and path.suffix.lower() in {".docx", ".pdf"}

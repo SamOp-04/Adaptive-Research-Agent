@@ -36,8 +36,14 @@ async def stream_research_graph(
     *,
     session_id: str | None = None,
     output_type: OutputType | None = None,
+    conversation_context: str | None = None,
 ) -> AsyncIterator[dict[str, Any]]:
-    state = initial_state(query, session_id=session_id, output_type=output_type)
+    state = initial_state(
+        query,
+        session_id=session_id,
+        output_type=output_type,
+        conversation_context=conversation_context,
+    )
 
     for step, message, node in NODE_SEQUENCE:
         started = make_step_event(step, "running", message)
@@ -74,8 +80,14 @@ async def run_research_graph(
     *,
     session_id: str | None = None,
     output_type: OutputType | None = None,
+    conversation_context: str | None = None,
 ) -> ResearchState:
-    state = initial_state(query, session_id=session_id, output_type=output_type)
+    state = initial_state(
+        query,
+        session_id=session_id,
+        output_type=output_type,
+        conversation_context=conversation_context,
+    )
 
     for step, message, node in NODE_SEQUENCE:
         state["events"].append(make_step_event(step, "running", message))
@@ -85,7 +97,6 @@ async def run_research_graph(
         except Exception as exc:
             state.setdefault("errors", []).append(str(exc))
             state["events"].append(make_step_event(step, "failed", str(exc)))
-            break
 
     return state
 

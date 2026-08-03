@@ -48,11 +48,13 @@ async def synthesize_with_ollama(
     findings: list[SourceFinding],
     *,
     output_type: OutputType = "text",
+    conversation_context: str = "",
 ) -> str | None:
     context = "\n".join(
         f"- {item.get('title', 'Untitled')}: {item.get('snippet', '')} Source: {item.get('url', '')}"
         for item in findings[:10]
     )
+    conversation_section = _conversation_context_section(conversation_context)
     messages = [
         {
             "role": "system",
@@ -61,8 +63,9 @@ async def synthesize_with_ollama(
         {
             "role": "user",
             "content": (
-                f"Question: {query}\n\nFindings:\n{context}\n\n"
+                f"{conversation_section}Question: {query}\n\nFindings:\n{context}\n\n"
                 "Answer with clear caveats and cite source URLs inline. "
+                "Do not add a separate Sources section; the app renders sources separately. "
                 f"{_synthesis_instructions(output_type)}"
             ),
         },
@@ -80,7 +83,8 @@ def _synthesis_instructions(output_type: OutputType) -> str:
     return " ".join(instructions)
 
 
-async def answer_without_sources(query: str) -> str | None:
+async def answer_without_sources(query: str, *, conversation_context: str = "") -> str | None:
+    conversation_section = _conversation_context_section(conversation_context)
     messages = [
         {
             "role": "system",
@@ -91,10 +95,24 @@ async def answer_without_sources(query: str) -> str | None:
         },
         {
             "role": "user",
-            "content": f"Question: {query}\n\nGive a helpful general answer and clearly state that it is unsourced.",
+            "content": (
+                f"{conversation_section}Question: {query}\n\n"
+                "Give a helpful general answer and clearly state that it is unsourced."
+            ),
         },
     ]
     try:
         return await OllamaClient().chat(messages, temperature=0.3)
     except Exception:
         return None
+
+
+def _conversation_context_section(conversation_context: str) -> str:
+    context = conversation_context.strip()
+    if not context:
+        return ""
+    return (
+        "Recent conversation context, for resolving follow-up wording only. "
+        "Do not treat it as source evidence:\n"
+        f"{context[:3000]}\n\n"
+    )

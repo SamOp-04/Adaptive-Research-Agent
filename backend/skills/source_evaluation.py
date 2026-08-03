@@ -102,15 +102,20 @@ def score_source(
         return {"domain": domain, "tier": tier_name, "score": 0.0}
 
     weights = config.get("weights", {})
-    citation_score = min((citations or 0) / 20, 1.0)
     domain_match_score = 1.0 if tier_name != "unknown" else 0.4
+    signals = [
+        ("tier", tier_score, 0.6),
+        ("recency", recency_score(published_at, config), 0.3),
+        ("domain_match", domain_match_score, 0.1),
+    ]
+    weighted_total = 0.0
+    weight_total = 0.0
+    for name, value, default_weight in signals:
+        weight = max(float(weights.get(name, default_weight)), 0.0)
+        weighted_total += value * weight
+        weight_total += weight
 
-    score = (
-        tier_score * float(weights.get("tier", 0.5))
-        + recency_score(published_at, config) * float(weights.get("recency", 0.25))
-        + citation_score * float(weights.get("citation", 0.15))
-        + domain_match_score * float(weights.get("domain_match", 0.1))
-    )
+    score = weighted_total / weight_total if weight_total else tier_score
 
     return {
         "domain": domain,

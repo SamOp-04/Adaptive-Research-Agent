@@ -17,9 +17,10 @@ import { Prism as SyntaxHighlighter } from "react-syntax-highlighter";
 import { vscDarkPlus } from "react-syntax-highlighter/dist/cjs/styles/prism";
 import remarkGfm from "remark-gfm";
 
+import { FileDownloadCard } from "@/components/FileDownloadCard";
 import { ChartArtifact } from "@/components/artifacts/ChartArtifact";
 import { TableArtifact } from "@/components/artifacts/TableArtifact";
-import type { ChatMessage } from "@/types/agent";
+import type { ChatMessage, FileArtifact } from "@/types/agent";
 
 
 function formatLabel(outputType?: ChatMessage["output_type"]) {
@@ -67,7 +68,15 @@ function buildCopyText(message: ChatMessage) {
     chunks.push([header, separator, ...rows].join("\n"));
   }
 
+  if (isFileArtifact(message.artifact)) {
+    chunks.push(`${message.artifact.fileName ?? "Generated file"}: ${message.artifact.href}`);
+  }
+
   return chunks.filter(Boolean).join("\n\n");
+}
+
+function isFileArtifact(artifact: ChatMessage["artifact"]): artifact is FileArtifact {
+  return artifact?.type === "docx" || artifact?.type === "pdf" || artifact?.type === "file";
 }
 
 function isLongTextContent(content: string) {
@@ -150,6 +159,7 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
   const OutputIcon = formatIcon(message.output_type);
   const isAssistantText = !isUser && !message.artifact;
   const isLongText = isAssistantText && isLongTextContent(message.content);
+  const visibleSources = !isUser && !message.artifact ? (message.sources ?? []) : [];
   const bubbleClass = isUser
     ? "max-w-[min(760px,100%)] rounded-2xl bg-[var(--app-accent)] px-4 py-3 text-sm leading-6 text-[var(--app-bg)] sm:max-w-[min(760px,90%)]"
     : isLongText
@@ -218,11 +228,21 @@ export function MessageBubble({ message }: { message: ChatMessage }) {
           <TableArtifact rows={message.artifact.rows} columns={message.artifact.columns} />
         ) : null}
 
-        {message.sources?.length ? (
+        {isFileArtifact(message.artifact) ? (
+          <div className="mt-4">
+            <FileDownloadCard
+              fileName={message.artifact.fileName ?? "Generated report"}
+              fileType={message.artifact.type}
+              href={message.artifact.href}
+            />
+          </div>
+        ) : null}
+
+        {visibleSources.length ? (
           <div className="mt-3 border-t border-current/15 pt-3">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide opacity-70">Sources</p>
             <ul className="space-y-1">
-              {message.sources.slice(0, 5).map((source) => (
+              {visibleSources.slice(0, 5).map((source) => (
                 <li key={source.url} className="truncate">
                   <a className="underline underline-offset-2" href={source.url} target="_blank" rel="noreferrer">
                     {source.title || source.url}

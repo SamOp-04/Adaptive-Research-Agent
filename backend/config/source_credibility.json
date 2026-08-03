@@ -1,8 +1,7 @@
 {
   "weights": {
-    "tier": 0.5,
-    "recency": 0.25,
-    "citation": 0.15,
+    "tier": 0.6,
+    "recency": 0.3,
     "domain_match": 0.1
   },
   "recency_decay_days": 540,

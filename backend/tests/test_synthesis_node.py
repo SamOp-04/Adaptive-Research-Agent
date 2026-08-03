@@ -8,7 +8,7 @@ from backend.nodes.synthesis import synthesis_node
 
 @pytest.mark.asyncio
 async def test_synthesis_node_uses_unsourced_fallback_when_search_has_no_findings(monkeypatch):
-    async def fake_answer_without_sources(query: str):
+    async def fake_answer_without_sources(query: str, *, conversation_context: str = ""):
         return "Unsourced general answer."
 
     monkeypatch.setattr("backend.nodes.synthesis.answer_without_sources", fake_answer_without_sources)
@@ -21,7 +21,7 @@ async def test_synthesis_node_uses_unsourced_fallback_when_search_has_no_finding
 
 @pytest.mark.asyncio
 async def test_synthesis_node_keeps_no_results_message_when_unsourced_fallback_fails(monkeypatch):
-    async def fake_answer_without_sources(query: str):
+    async def fake_answer_without_sources(query: str, *, conversation_context: str = ""):
         return None
 
     monkeypatch.setattr("backend.nodes.synthesis.answer_without_sources", fake_answer_without_sources)
@@ -52,6 +52,7 @@ async def test_synthesis_prompt_avoids_latex_when_math_is_needed(monkeypatch):
     assert answer == "Plain prose answer."
     assert "Do not use LaTeX" in prompt_text
     assert "simple inline code" in prompt_text
+    assert "Do not add a separate Sources section" in prompt_text
 
 
 @pytest.mark.asyncio
@@ -82,7 +83,7 @@ async def test_synthesis_prompt_for_pdf_writes_document_body_not_external_pdf_li
 async def test_synthesis_node_passes_output_type_to_synthesis(monkeypatch):
     captured = {}
 
-    async def fake_synthesize_with_ollama(query, findings, *, output_type="text"):
+    async def fake_synthesize_with_ollama(query, findings, *, output_type="text", conversation_context=""):
         captured["output_type"] = output_type
         return "Document-ready answer."
 
@@ -98,3 +99,26 @@ async def test_synthesis_node_passes_output_type_to_synthesis(monkeypatch):
 
     assert state["answer"] == "Document-ready answer."
     assert captured["output_type"] == "docx"
+
+
+@pytest.mark.asyncio
+async def test_synthesis_prompt_includes_conversation_context(monkeypatch):
+    captured = {}
+
+    class FakeClient:
+        async def chat(self, messages, **kwargs):
+            captured["messages"] = messages
+            return "Context-aware answer."
+
+    monkeypatch.setattr("backend.llm.ollama_client.OllamaClient", lambda: FakeClient())
+
+    answer = await synthesize_with_ollama(
+        "What about 2011 specifically?",
+        [{"title": "Census source", "snippet": "2011 population details.", "url": "https://example.com"}],
+        conversation_context="User: Tell me about Gujarat population.",
+    )
+
+    prompt_text = "\n".join(message["content"] for message in captured["messages"])
+    assert answer == "Context-aware answer."
+    assert "Recent conversation context" in prompt_text
+    assert "Gujarat population" in prompt_text

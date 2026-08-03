@@ -14,6 +14,13 @@ def test_score_source_known_high_trust_domain():
     assert result["score"] > 0.7
 
 
+def test_score_source_ignores_unpopulated_citation_signal():
+    without_citations = score_source("https://nih.gov/article", published_at="2026-01-01T00:00:00+00:00", citations=0)
+    with_citations = score_source("https://nih.gov/article", published_at="2026-01-01T00:00:00+00:00", citations=20)
+
+    assert with_citations["score"] == without_citations["score"]
+
+
 def test_dedupe_findings_by_url_keeps_highest_credibility_match():
     findings = [
         {

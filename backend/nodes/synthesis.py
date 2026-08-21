@@ -7,6 +7,12 @@ from backend.llm.ollama_client import answer_without_sources, synthesize_with_ol
 async def synthesis_node(state: ResearchState) -> ResearchState:
     findings = state.get("findings", [])
     conversation_context = state.get("conversation_context", "")
+    if not state.get("needs_research", True):
+        answer = await answer_without_sources(
+            state.get("query", ""),
+            conversation_context=conversation_context,
+        )
+        return {"answer": answer or "I am an adaptive research assistant that researches substantive questions and helps with follow-up analysis.", "key_findings": []}
     if not findings:
         fallback_answer = await answer_without_sources(
             state.get("query", ""),

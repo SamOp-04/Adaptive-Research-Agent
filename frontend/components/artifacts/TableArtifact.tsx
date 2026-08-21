@@ -9,6 +9,7 @@ import {
 import { useMemo } from "react";
 
 import { CredibilityBadge } from "@/components/CredibilityBadge";
+import { stripMarkdown } from "@/lib/text";
 
 
 type TableRow = Record<string, string | number | null | undefined>;
@@ -68,7 +69,7 @@ export function TableArtifact({
               </a>
             );
           }
-          return String(value ?? "");
+          return stripMarkdown(String(value ?? ""));
         },
       })),
     [orderedKeys],
@@ -85,13 +86,13 @@ export function TableArtifact({
   }
 
   return (
-    <div className="mt-4 overflow-x-auto rounded-md border border-[var(--app-border)]">
+    <div className="mt-4 overflow-x-auto rounded-xl border border-[var(--app-border)] bg-[var(--app-panel)]">
       <table className="min-w-full text-left text-sm">
         <thead>
           {table.getHeaderGroups().map((headerGroup) => (
-            <tr key={headerGroup.id} className="border-b border-[var(--app-border)]">
+            <tr key={headerGroup.id} className="border-b border-[var(--app-border)] bg-[var(--app-surface)]/60">
               {headerGroup.headers.map((header) => (
-                <th key={header.id} className="px-3 py-2 text-xs font-medium capitalize text-[var(--app-text-secondary)]">
+                <th key={header.id} className="px-3 py-2.5 text-xs font-medium capitalize tracking-wide text-[var(--app-text-secondary)]">
                   {flexRender(header.column.columnDef.header, header.getContext())}
                 </th>
               ))}
@@ -100,9 +101,9 @@ export function TableArtifact({
         </thead>
         <tbody>
           {table.getRowModel().rows.map((row) => (
-            <tr key={row.id} className="border-b border-[var(--app-border)] last:border-b-0">
+            <tr key={row.id} className="border-b border-[var(--app-border-soft)] transition last:border-b-0 hover:bg-[var(--app-surface)]/40">
               {row.getVisibleCells().map((cell) => (
-                <td key={cell.id} className="max-w-xs px-3 py-2 align-top text-[var(--app-text-primary)]">
+                <td key={cell.id} className="max-w-xs px-3 py-2.5 align-top text-[var(--app-text-primary)]">
                   <div className="break-words">{flexRender(cell.column.columnDef.cell, cell.getContext())}</div>
                 </td>
               ))}

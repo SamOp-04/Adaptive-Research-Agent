@@ -28,11 +28,15 @@ User request:
 
 Return exactly this JSON object:
 {{
+    "needs_research": true | false,
   "query_type": "factual" | "analytical" | "comparative" | "exploratory",
   "depth": "quick" | "standard" | "deep",
   "output_type": "text" | "chart" | "table" | "docx" | "pdf"
 }}
 
+Set needs_research to false for greetings, thanks, casual conversation, capability questions,
+or simple requests that do not need current or sourced information. Set it to true when the
+user asks for facts, explanations, comparisons, recommendations, analysis, or current information.
 Choose the output_type the user would most likely want even when they do not explicitly name a format.
 Use "table" for comparisons, rankings, feature matrices, structured pros/cons, or multi-item evaluations.
 Use "chart" for numeric trends, time series, distributions, or metric comparisons.
@@ -80,6 +84,13 @@ def _infer_query_type(query: str) -> QueryType:
 async def classify_intent(state: ResearchState) -> ResearchState:
     query = state.get("query", "")
     current_output_type = state.get("output_type")
+    if not _infer_needs_research(query):
+        return {
+            "needs_research": False,
+            "query_type": "factual",
+            "depth": "quick",
+            "output_type": _infer_output_type(query, current_output_type),
+        }
     llm_classification = await _classify_with_llm(query, state.get("conversation_context", ""))
     if llm_classification:
         output_type = _resolve_output_type(
@@ -87,12 +98,14 @@ async def classify_intent(state: ResearchState) -> ResearchState:
             current_output_type,
         )
         return {
+            "needs_research": llm_classification.get("needs_research") != "false",
             "query_type": llm_classification["query_type"],
             "depth": llm_classification["depth"],
             "output_type": output_type,
         }
 
     return {
+        "needs_research": _infer_needs_research(query),
         "query_type": _infer_query_type(query),
         "depth": _infer_depth(query),
         "output_type": _infer_output_type(query, current_output_type),
@@ -137,6 +150,9 @@ def _extract_json_object(raw: str) -> dict[str, Any]:
 
 
 def _validate_classification(parsed: dict[str, Any]) -> dict[str, str] | None:
+    needs_research = parsed.get("needs_research")
+    if not isinstance(needs_research, bool):
+        return None
     query_type = str(parsed.get("query_type", "")).strip().lower()
     depth = str(parsed.get("depth", "")).strip().lower()
     output_type = _validate_output_type(parsed)
@@ -149,6 +165,7 @@ def _validate_classification(parsed: dict[str, Any]) -> dict[str, str] | None:
         return None
 
     return {
+        "needs_research": str(needs_research).lower(),
         "query_type": query_type,
         "depth": depth,
         "output_type": output_type,
@@ -166,3 +183,21 @@ def _resolve_output_type(inferred: str, current: OutputType | None) -> OutputTyp
     if current and current != "text":
         return current
     return inferred  # type: ignore[return-value]
+
+
+def _infer_needs_research(query: str) -> bool:
+    lowered = " ".join(query.lower().split()).strip(".!?,")
+    casual_phrases = (
+        "hello",
+        "hi",
+        "hey",
+        "how are you",
+        "what are you",
+        "who are you",
+        "what can you do",
+        "thanks",
+        "thank you",
+        "good morning",
+        "good evening",
+    )
+    return not any(lowered == phrase or lowered.startswith(f"{phrase} ") for phrase in casual_phrases)

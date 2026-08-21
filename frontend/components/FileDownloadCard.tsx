@@ -1,3 +1,5 @@
+import { Download, FileSpreadsheet, FileText } from "lucide-react";
+
 type FileDownloadCardProps = {
   fileName: string;
   fileType: string;
@@ -5,25 +7,43 @@ type FileDownloadCardProps = {
   disabled?: boolean;
 };
 
+function iconFor(fileType: string) {
+  const normalized = fileType.toLowerCase();
+  if (normalized.includes("pdf")) return FileText;
+  if (normalized.includes("docx")) return FileText;
+  return FileSpreadsheet;
+}
 
 export function FileDownloadCard({ fileName, fileType, href, disabled = false }: FileDownloadCardProps) {
   const displayType = fileType.toUpperCase();
+  const Icon = iconFor(fileType);
 
   return (
-    <section className="rounded-md border border-[var(--app-border)] bg-[var(--app-panel)] p-4">
-      <p className="text-sm font-semibold text-[var(--app-text-primary)]">File output</p>
-      <p className="mt-2 break-words text-sm text-[var(--app-text-secondary)]">{fileName}</p>
-      <a
-        href={disabled ? undefined : href}
-        aria-disabled={disabled}
-        className={`mt-3 inline-flex rounded-md px-3 py-2 text-sm font-medium transition ${
-          disabled
-            ? "cursor-not-allowed bg-[var(--app-border)] text-[var(--app-text-secondary)]"
-            : "bg-[var(--app-accent)] text-[var(--app-bg)] hover:bg-[var(--app-accent-hover)]"
+    <a
+      href={disabled ? undefined : href}
+      aria-disabled={disabled}
+      target={disabled ? undefined : "_blank"}
+      rel={disabled ? undefined : "noreferrer"}
+      className={`group flex items-center gap-3 rounded-xl border px-3.5 py-3 transition ${
+        disabled
+          ? "cursor-not-allowed border-[var(--app-border)] bg-[var(--app-panel)]/60"
+          : "border-[var(--app-border)] bg-[var(--app-panel)] hover:border-[var(--app-accent)]/50 hover:bg-[var(--app-surface-hover)]"
+      }`}
+    >
+      <span
+        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${
+          disabled ? "bg-[var(--app-surface)] text-[var(--app-text-tertiary)]" : "bg-[var(--app-accent-soft)] text-[var(--app-accent)]"
         }`}
       >
-        Download {displayType}
-      </a>
-    </section>
+        <Icon className="h-4.5 w-4.5" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-sm font-medium text-[var(--app-text-primary)]">{fileName}</span>
+        <span className="block text-xs text-[var(--app-text-secondary)]">{displayType} file</span>
+      </span>
+      {!disabled ? (
+        <Download className="h-4 w-4 shrink-0 text-[var(--app-text-tertiary)] transition group-hover:text-[var(--app-accent)]" />
+      ) : null}
+    </a>
   );
 }

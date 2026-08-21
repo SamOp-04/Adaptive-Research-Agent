@@ -14,10 +14,11 @@ import {
 } from "recharts";
 
 import { CredibilityBadge } from "@/components/CredibilityBadge";
+import { stripMarkdown } from "@/lib/text";
 
 type ChartDatum = Record<string, string | number | null | undefined>;
-const APP_ACCENT_FALLBACK = "#0f766e"; // Mirrors DESIGN.md --app-accent for SVG props before CSS variables resolve.
-const TEXT_SECONDARY_FALLBACK = "#6b6b68"; // Mirrors DESIGN.md --app-text-secondary for SVG tick props.
+const APP_ACCENT_FALLBACK = "#d97757"; // Mirrors globals.css --app-accent for SVG props before CSS variables resolve.
+const TEXT_SECONDARY_FALLBACK = "#a8a196"; // Mirrors globals.css --app-text-secondary for SVG tick props.
 
 function useCssToken(name: string, fallback: string) {
   const [value, setValue] = useState(fallback);
@@ -59,10 +60,10 @@ function alphanumericRatio(text: string) {
 }
 
 function summarizeFindingText(value: unknown, fallbackTitle: unknown) {
-  const text = String(value || "Source").replace(/\s+/g, " ").trim();
+  const text = stripMarkdown(String(value || "Source").replace(/\s+/g, " ").trim());
   const firstSentence = text.match(/^.*?[.!?](?:\s|$)/)?.[0]?.trim() || text;
   if (alphanumericRatio(firstSentence) < 0.5) {
-    return String(fallbackTitle || "Source").replace(/\s+/g, " ").trim();
+    return stripMarkdown(String(fallbackTitle || "Source").replace(/\s+/g, " ").trim());
   }
   const summary = firstSentence.length <= 150 ? firstSentence : text.slice(0, 150).trim();
   return summary.length < text.length ? `${summary}...` : summary;
@@ -104,7 +105,8 @@ export function ChartArtifact({ data }: { data: ChartDatum[] }) {
   }
 
   return (
-    <div className="mt-4 h-72 w-full">
+    <div className="mt-4 rounded-xl border border-[var(--app-border)] bg-[var(--app-panel)] p-4">
+    <div className="h-72 w-full">
       <ResponsiveContainer width="100%" height="100%">
         {isTimeSeries ? (
           <LineChart data={data} margin={{ top: 8, right: 8, bottom: 32, left: 0 }}>
@@ -124,6 +126,7 @@ export function ChartArtifact({ data }: { data: ChartDatum[] }) {
           </BarChart>
         )}
       </ResponsiveContainer>
+    </div>
     </div>
   );
 }

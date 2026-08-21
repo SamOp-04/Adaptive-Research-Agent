@@ -10,6 +10,7 @@ from backend.nodes.output_router import _classify_output_with_llm, output_router
 async def test_intent_classifier_uses_llm_output_type(monkeypatch):
     async def fake_classify_with_llm(query: str, conversation_context: str = ""):
         return {
+            "needs_research": "true",
             "query_type": "comparative",
             "depth": "standard",
             "output_type": "table",
@@ -21,6 +22,18 @@ async def test_intent_classifier_uses_llm_output_type(monkeypatch):
 
     assert state["output_type"] == "table"
     assert state["query_type"] == "comparative"
+
+
+@pytest.mark.asyncio
+async def test_intent_classifier_marks_greeting_as_not_research(monkeypatch):
+    async def fail_if_called(*args, **kwargs):
+        raise AssertionError("casual requests should not call the intent LLM")
+
+    monkeypatch.setattr("backend.nodes.intent_classifier._classify_with_llm", fail_if_called)
+
+    state = await classify_intent({"query": "hello how are you"})
+
+    assert state["needs_research"] is False
 
 
 @pytest.mark.asyncio

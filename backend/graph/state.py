@@ -30,6 +30,7 @@ class ResearchState(TypedDict, total=False):
     session_id: str
     query: str
     conversation_context: str
+    needs_research: bool
     query_type: Literal["factual", "analytical", "comparative", "exploratory"]
     depth: Depth
     output_type: OutputType

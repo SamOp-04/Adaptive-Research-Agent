@@ -38,3 +38,13 @@ def test_extract_chart_points_fast_rejects_mixed_units():
     )
 
     assert points is None
+
+
+def test_extract_chart_points_fast_does_not_use_comparison_phrase_as_label():
+    points = extract_chart_points_fast(
+        "renewable electricity share trend",
+        "More Than 90% of electricity came from renewables in 2023.",
+        [{"title": "Renewables", "snippet": "More Than 90% of electricity came from renewables in 2023."}],
+    )
+
+    assert points == [{"label": "2023", "value": 90.0, "unit": "percent", "source_index": 0}]

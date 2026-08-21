@@ -35,6 +35,20 @@ CATEGORY_RE = re.compile(
 PROPER_NOUN_RE = re.compile(r"\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2})\b")
 SENTENCE_SPLIT_RE = re.compile(r"(?<=[.!?])\s+")
 
+# Sentence-leading / mid-sentence capitalized words that are not real entity names.
+# These get capitalized in normal prose ("More than 90%...", "According to...") and
+# would otherwise be picked up by PROPER_NOUN_RE as a fake chart label.
+NON_ENTITY_WORDS = {
+    "more", "less", "most", "least", "over", "under", "about", "roughly", "nearly",
+    "almost", "approximately", "around", "than", "the", "this", "that", "these",
+    "those", "these", "total", "overall", "according", "source", "sources", "also",
+    "however", "meanwhile", "currently", "today", "now", "in", "by", "as", "of",
+    "for", "with", "since", "up", "down", "each", "every", "some", "many", "few",
+    "it", "its", "we", "they", "there", "here", "one", "two", "three", "four",
+    "five", "figure", "chart", "table", "data", "report", "reports", "study",
+    "studies", "note", "notes", "key", "top",
+}
+
 UNIT_PATTERN = re.compile(
     r"\b(crore|lakh|million|billion|trillion|thousand|bps|bn|mn|m|b|k|x)\b",
     flags=re.IGNORECASE,
@@ -295,12 +309,28 @@ def _nearest_proper_noun(sentence: str, match: re.Match[str]) -> str | None:
     nearest: tuple[int, str] | None = None
     for proper_match in PROPER_NOUN_RE.finditer(prefix):
         label = proper_match.group(1).strip()
-        if label.lower() in {"in", "according", "source"}:
+        if _is_non_entity_label(label):
             continue
         distance = match.start() - proper_match.end()
         if distance <= 50 and (nearest is None or distance < nearest[0]):
             nearest = (distance, label)
     return nearest[1] if nearest else None
+
+
+def _is_non_entity_label(label: str) -> bool:
+    words = label.lower().split()
+    if not words:
+        return True
+    # Reject if every word in the candidate label is a common non-entity word
+    # (e.g. "More Than", "According To") rather than an actual proper noun.
+    if all(word in NON_ENTITY_WORDS for word in words):
+        return True
+    # Reject if the label's first word is a common sentence-leading/quantifier
+    # word immediately followed by a capitalized non-entity word, which is the
+    # classic false-positive shape ("More Than", "Over Half").
+    if words[0] in NON_ENTITY_WORDS and len(words) > 1 and words[1] in NON_ENTITY_WORDS:
+        return True
+    return False
 
 
 def _metric_label(sentence: str, match: re.Match[str]) -> str | None:

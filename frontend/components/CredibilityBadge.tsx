@@ -24,7 +24,7 @@ export function CredibilityBadge({ score }: { score: number | null | undefined }
 
   return (
     <span
-      className="inline-flex items-center gap-1.5 rounded-full border border-[var(--app-border)] bg-[var(--app-bg)] px-2 py-0.5 text-xs font-medium"
+      className="inline-flex items-center gap-1.5 rounded-full border border-[var(--app-border)] bg-[var(--app-bg)]/60 px-2 py-0.5 text-xs font-medium"
       style={{ color: tier.colorVar }}
       title={numericScore === null ? "Credibility score unavailable" : `Credibility score: ${numericScore.toFixed(2)}`}
       aria-label={`${tier.label} credibility`}

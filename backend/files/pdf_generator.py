@@ -49,13 +49,13 @@ def write_pdf(
           h3, h4 {{ color: #0f766e; margin: 18px 0 8px; }}
           p {{ font-size: 13px; line-height: 1.5; }}
           li {{ margin-bottom: 6px; font-size: 13px; }}
-          table {{ border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 12px; }}
-          th, td {{ border: 1px solid #d4d4d0; padding: 6px 8px; vertical-align: top; }}
+          table {{ border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 12px; table-layout: fixed; }}
+          th, td {{ border: 1px solid #d4d4d0; padding: 6px 8px; vertical-align: top; overflow-wrap: anywhere; word-break: break-word; }}
           th {{ background: #f7f7f6; text-align: left; }}
           code {{ background: #f7f7f6; padding: 1px 3px; font-family: monospace; }}
           pre {{ background: #f7f7f6; padding: 10px; overflow-wrap: anywhere; }}
           hr {{ border: 0; border-top: 1px solid #e5e5e3; margin: 16px 0; }}
-          a {{ color: #0f766e; }}
+          a {{ color: #0f766e; overflow-wrap: anywhere; word-break: break-word; }}
           .source {{ font-size: 11px; color: #6b6b68; }}
           .cred-badge {{ font-size: 10px; font-weight: 600; margin-right: 6px; }}
           .cred-high {{ color: #0f766e; }}

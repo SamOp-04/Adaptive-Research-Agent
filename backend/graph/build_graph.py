@@ -45,7 +45,7 @@ async def stream_research_graph(
         conversation_context=conversation_context,
     )
 
-    for step, message, node in NODE_SEQUENCE:
+    for step, message, node in _nodes_for_state(state):
         started = make_step_event(step, "running", message)
         state["events"].append(started)
         yield started
@@ -89,7 +89,7 @@ async def run_research_graph(
         conversation_context=conversation_context,
     )
 
-    for step, message, node in NODE_SEQUENCE:
+    for step, message, node in _nodes_for_state(state):
         state["events"].append(make_step_event(step, "running", message))
         try:
             state.update(await _call_node(node, state))
@@ -99,6 +99,24 @@ async def run_research_graph(
             state["events"].append(make_step_event(step, "failed", str(exc)))
 
     return state
+
+
+def _nodes_for_state(state: ResearchState) -> list[tuple[str, str, Node]]:
+    if state.get("needs_research", True):
+        return NODE_SEQUENCE
+    return [
+        NODE_SEQUENCE[0],
+        NODE_SEQUENCE[3],
+        NODE_SEQUENCE[4],
+    ]
+
+
+def _route_after_intent(state: ResearchState) -> str:
+    return "planning" if state.get("needs_research", True) else "synthesis"
+
+
+def _route_after_planning(state: ResearchState) -> str:
+    return "research" if state.get("needs_research", True) else "synthesis"
 
 
 def build_graph():
@@ -112,8 +130,8 @@ def build_graph():
     graph.add_node("synthesis", synthesis_node)
     graph.add_node("output", output_router_node)
     graph.set_entry_point("intent")
-    graph.add_edge("intent", "planning")
-    graph.add_edge("planning", "research")
+    graph.add_conditional_edges("intent", _route_after_intent)
+    graph.add_conditional_edges("planning", _route_after_planning)
     graph.add_edge("research", "synthesis")
     graph.add_edge("synthesis", "output")
     graph.add_edge("output", END)

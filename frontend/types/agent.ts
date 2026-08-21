@@ -57,4 +57,12 @@ export type ChatMessage = {
   outputMode?: "auto" | "explicit";
   artifact?: AgentArtifact;
   sources?: SourceFinding[];
+  /** Per-turn agent trace, kept alongside the finished message so it can be reopened later. */
+  steps?: StepEvent[];
+  /** Wall-clock time the agent spent working this turn, in milliseconds. */
+  durationMs?: number;
+  /** True while this message is the live, in-progress turn. */
+  isStreaming?: boolean;
+  /** True if the turn ended in an error/timeout rather than a normal completion. */
+  isError?: boolean;
 };

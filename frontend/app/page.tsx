@@ -2,7 +2,7 @@ import { ChatWindow } from "@/components/ChatWindow";
 
 export default function Home() {
   return (
-    <main className="min-h-dvh overflow-y-auto bg-[var(--app-bg)] text-zinc-950 md:h-dvh md:overflow-hidden">
+    <main className="h-dvh overflow-hidden bg-[var(--app-bg)] text-[var(--app-text-primary)]">
       <ChatWindow />
     </main>
   );

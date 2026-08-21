@@ -12,6 +12,7 @@ def test_extract_json_object_accepts_model_prose_wrapper():
 def test_validate_classification_rejects_invalid_output_type():
     result = _validate_classification(
         {
+            "needs_research": True,
             "query_type": "factual",
             "depth": "quick",
             "output_type": "slides",
@@ -24,6 +25,7 @@ def test_validate_classification_rejects_invalid_output_type():
 def test_validate_classification_normalizes_valid_values():
     result = _validate_classification(
         {
+            "needs_research": True,
             "query_type": " Comparative ",
             "depth": " Deep ",
             "output_type": " TABLE ",
@@ -31,6 +33,7 @@ def test_validate_classification_normalizes_valid_values():
     )
 
     assert result == {
+        "needs_research": "true",
         "query_type": "comparative",
         "depth": "deep",
         "output_type": "table",

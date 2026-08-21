@@ -20,6 +20,22 @@ async def test_synthesis_node_uses_unsourced_fallback_when_search_has_no_finding
 
 
 @pytest.mark.asyncio
+async def test_synthesis_node_answers_casual_requests_without_research(monkeypatch):
+    async def fake_answer_without_sources(query: str, *, conversation_context: str = ""):
+        return "I am an adaptive research assistant."
+
+    async def fail_if_called(*args, **kwargs):
+        raise AssertionError("casual requests should not synthesize research")
+
+    monkeypatch.setattr("backend.nodes.synthesis.answer_without_sources", fake_answer_without_sources)
+    monkeypatch.setattr("backend.nodes.synthesis.synthesize_with_ollama", fail_if_called)
+
+    state = await synthesis_node({"query": "what are you", "needs_research": False})
+
+    assert state["answer"] == "I am an adaptive research assistant."
+
+
+@pytest.mark.asyncio
 async def test_synthesis_node_keeps_no_results_message_when_unsourced_fallback_fails(monkeypatch):
     async def fake_answer_without_sources(query: str, *, conversation_context: str = ""):
         return None

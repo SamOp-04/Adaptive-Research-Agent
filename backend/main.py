@@ -137,6 +137,19 @@ async def get_messages(session_id: str, db: AsyncSession = Depends(get_db)) -> l
     ]
 
 
+@app.get("/sessions")
+async def get_sessions(db: AsyncSession = Depends(get_db)) -> list[dict[str, object]]:
+    result = await db.execute(select(Session).order_by(Session.created_at.desc()).limit(50))
+    return [
+        {
+            "id": session.id,
+            "title": session.title or "Untitled chat",
+            "created_at": session.created_at.isoformat(),
+        }
+        for session in result.scalars().all()
+    ]
+
+
 async def _recent_session_context(db: AsyncSession, session_id: str | None) -> str:
     if not session_id:
         return ""

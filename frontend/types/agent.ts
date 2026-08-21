@@ -66,3 +66,9 @@ export type ChatMessage = {
   /** True if the turn ended in an error/timeout rather than a normal completion. */
   isError?: boolean;
 };
+
+export type ChatSession = {
+  id: string;
+  title: string;
+  created_at: string;
+};

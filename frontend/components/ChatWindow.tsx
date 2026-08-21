@@ -8,6 +8,9 @@ import {
   ChevronDown,
   FileDown,
   FileText,
+  History,
+  PanelLeftClose,
+  PanelLeftOpen,
   SquarePen,
   Sparkles,
   Square,
@@ -17,8 +20,9 @@ import {
 } from "lucide-react";
 
 import { MessageBubble } from "@/components/MessageBubble";
+import { getChatMessages, getChatSessions } from "@/lib/api";
 import { openChatStream } from "@/lib/sse";
-import type { ChatMessage, OutputType, StepEvent } from "@/types/agent";
+import type { ChatMessage, ChatSession, OutputType, StepEvent } from "@/types/agent";
 
 type OutputOption = { label: string; value: OutputType | "auto"; icon: typeof Wand2; hint: string };
 
@@ -52,6 +56,8 @@ const emptyPrompts = [
   "Chart global renewable energy adoption over the last decade.",
 ];
 
+const ACTIVE_SESSION_KEY = "adaptive-research-agent-session";
+
 export function ChatWindow() {
   const [input, setInput] = useState("");
   const [outputType, setOutputType] = useState<OutputType | "auto">("auto");
@@ -60,6 +66,9 @@ export function ChatWindow() {
   const [liveSteps, setLiveSteps] = useState<StepEvent[]>([]);
   const [isStreaming, setIsStreaming] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(true);
+  const [historyLoading, setHistoryLoading] = useState(true);
   const [stuckToBottom, setStuckToBottom] = useState(true);
 
   const closeStreamRef = useRef<(() => void) | null>(null);
@@ -71,6 +80,55 @@ export function ChatWindow() {
   const turnStartRef = useRef<number | null>(null);
 
   const selectedOption = outputOptions.find((option) => option.value === outputType) ?? outputOptions[0];
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function restoreChat() {
+      try {
+        const savedSessions = await getChatSessions();
+        if (cancelled) return;
+        setSessions(savedSessions);
+        const savedSessionId = window.localStorage.getItem(ACTIVE_SESSION_KEY);
+        const activeSession = savedSessions.find((session) => session.id === savedSessionId) ?? savedSessions[0];
+        if (!activeSession) return;
+
+        const savedMessages = await getChatMessages(activeSession.id);
+        if (cancelled) return;
+        setSessionId(activeSession.id);
+        setMessages(savedMessages);
+        window.localStorage.setItem(ACTIVE_SESSION_KEY, activeSession.id);
+      } catch {
+        // The chat remains usable when the backend is unavailable during startup.
+      } finally {
+        if (!cancelled) setHistoryLoading(false);
+      }
+    }
+
+    restoreChat();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  function updateSessionId(nextSessionId: string) {
+    setSessionId(nextSessionId);
+    window.localStorage.setItem(ACTIVE_SESSION_KEY, nextSessionId);
+    void getChatSessions().then(setSessions).catch(() => undefined);
+  }
+
+  async function selectSession(nextSession: ChatSession) {
+    if (isStreaming || nextSession.id === sessionId) return;
+    try {
+      const savedMessages = await getChatMessages(nextSession.id);
+      setSessionId(nextSession.id);
+      setMessages(savedMessages);
+      window.localStorage.setItem(ACTIVE_SESSION_KEY, nextSession.id);
+      setHistoryOpen(false);
+    } catch {
+      // Keep the current chat visible if history loading fails.
+    }
+  }
 
   function scrollToBottom(behavior: ScrollBehavior = "smooth") {
     if (!shouldStickToBottomRef.current) return;
@@ -128,7 +186,7 @@ export function ChatWindow() {
       {
         onStep: (event) => setLiveSteps((current) => mergeStep(current, event)),
         onComplete: (payload) => {
-          if (payload.session_id) setSessionId(payload.session_id);
+          if (payload.session_id) updateSessionId(payload.session_id);
           const durationMs = turnStartRef.current ? Date.now() - turnStartRef.current : undefined;
 
           setMessages((current) => {
@@ -215,7 +273,10 @@ export function ChatWindow() {
     setMessages([]);
     setLiveSteps([]);
     setSessionId(null);
+    window.localStorage.removeItem(ACTIVE_SESSION_KEY);
     setIsStreaming(false);
+    setHistoryOpen(false);
+    void getChatSessions().then(setSessions).catch(() => undefined);
   }
 
   function handleTextareaKeyDown(event: React.KeyboardEvent<HTMLTextAreaElement>) {
@@ -237,22 +298,95 @@ export function ChatWindow() {
   const hasMessages = messages.length > 0 || isStreaming;
 
   return (
-    <div className="mx-auto flex h-dvh max-w-[1000px] flex-col">
+    <div className="relative flex h-dvh w-full overflow-hidden">
+      {historyOpen ? (
+        <button
+          type="button"
+          onClick={() => setHistoryOpen(false)}
+          className="fixed inset-0 z-20 bg-black/30 sm:hidden"
+          aria-label="Close chat history"
+        />
+      ) : null}
+
+      <aside
+        className={`fixed inset-y-0 left-0 z-30 flex shrink-0 overflow-hidden border-r border-[var(--app-border)] bg-[var(--app-bg-elevated)] shadow-floating transition-all duration-300 ease-out sm:static sm:shadow-none ${
+          historyOpen
+            ? "w-[260px] translate-x-0"
+            : "w-[260px] -translate-x-full sm:w-0 sm:translate-x-0 sm:border-r-0"
+        }`}
+      >
+        <div className="flex h-full w-[260px] shrink-0 flex-col">
+          <div className="flex items-center justify-between border-b border-[var(--app-border-soft)] px-4 py-4">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <History className="h-4 w-4 text-[var(--app-accent)]" />
+              Chat history
+            </div>
+            <button
+              type="button"
+              onClick={() => setHistoryOpen(false)}
+              className="rounded-lg p-1.5 text-[var(--app-text-tertiary)] transition hover:bg-[var(--app-surface)] hover:text-[var(--app-text-primary)]"
+              aria-label="Close chat history"
+            >
+              <PanelLeftClose className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="p-3">
+            <button
+              type="button"
+              onClick={handleNewChat}
+              className="flex w-full items-center gap-2 rounded-xl border border-[var(--app-border)] bg-[var(--app-panel)] px-3 py-2.5 text-left text-xs font-medium text-[var(--app-text-secondary)] transition hover:border-[var(--app-accent)]/50 hover:text-[var(--app-text-primary)]"
+            >
+              <SquarePen className="h-3.5 w-3.5" />
+              New chat
+            </button>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
+            {historyLoading ? (
+              <div className="space-y-2 px-2 pt-2">
+                <div className="h-9 animate-pulse rounded-lg bg-[var(--app-surface)]" />
+                <div className="h-9 animate-pulse rounded-lg bg-[var(--app-surface)]" />
+              </div>
+            ) : sessions.length === 0 ? (
+              <p className="px-3 py-4 text-xs leading-5 text-[var(--app-text-tertiary)]">Your saved chats will appear here.</p>
+            ) : (
+              <div className="flex flex-col gap-1">
+                {sessions.map((session) => (
+                  <button
+                    key={session.id}
+                    type="button"
+                    onClick={() => void selectSession(session)}
+                    className={`animate-fade-in-up truncate rounded-lg px-3 py-2.5 text-left text-xs transition ${
+                      session.id === sessionId
+                        ? "bg-[var(--app-accent-soft)] text-[var(--app-text-primary)]"
+                        : "text-[var(--app-text-secondary)] hover:bg-[var(--app-surface)] hover:text-[var(--app-text-primary)]"
+                    }`}
+                  >
+                    {session.title}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </aside>
+
+    <div className="flex min-w-0 flex-1 flex-col">
       <header className="flex shrink-0 items-center justify-between px-4 py-3.5 sm:px-6">
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setHistoryOpen((value) => !value)}
+            className="rounded-lg p-1.5 text-[var(--app-text-tertiary)] transition hover:bg-[var(--app-surface)] hover:text-[var(--app-text-primary)]"
+            aria-label={historyOpen ? "Hide chat history" : "Show chat history"}
+          >
+            {historyOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
+          </button>
           <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[var(--app-accent)] text-[var(--app-accent-text)]">
             <Sparkles className="h-4 w-4" />
           </span>
           <span className="text-sm font-medium text-[var(--app-text-primary)]">Adaptive Research Agent</span>
         </div>
-        <button
-          type="button"
-          onClick={handleNewChat}
-          className="inline-flex items-center gap-1.5 rounded-lg border border-[var(--app-border)] bg-[var(--app-panel)] px-3 py-1.5 text-xs font-medium text-[var(--app-text-secondary)] transition hover:border-[var(--app-accent)]/50 hover:text-[var(--app-text-primary)]"
-        >
-          <SquarePen className="h-3.5 w-3.5" />
-          New chat
-        </button>
+        <span className="text-[11px] text-[var(--app-text-tertiary)]">{sessionId ? "Saved" : "New session"}</span>
       </header>
 
       <div className="relative flex min-h-0 flex-1 flex-col">
@@ -369,8 +503,10 @@ export function ChatWindow() {
         </div>
       ) : null}
     </div>
+    </div>
   );
 }
+
 
 function ChatInputBar({
   input,

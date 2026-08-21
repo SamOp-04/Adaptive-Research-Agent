@@ -116,7 +116,7 @@ function MarkdownContent({ content }: { content: string }) {
         strong: ({ children }) => <strong className="font-semibold text-[var(--app-text-primary)]">{children}</strong>,
         a: ({ children, ...props }) => (
           <a
-            className="text-[var(--app-accent)] underline decoration-[var(--app-accent)]/40 underline-offset-2 transition hover:decoration-[var(--app-accent)]"
+            className="break-all text-[var(--app-accent)] underline decoration-[var(--app-accent)]/40 underline-offset-2 transition hover:decoration-[var(--app-accent)]"
             target="_blank"
             rel="noreferrer"
             {...props}
@@ -134,18 +134,18 @@ function MarkdownContent({ content }: { content: string }) {
           </blockquote>
         ),
         table: ({ children }) => (
-          <div className="my-3 overflow-x-auto rounded-lg border border-[var(--app-border)]">
-            <table className="min-w-full text-left text-sm">{children}</table>
+          <div className="my-3 max-w-full overflow-x-auto rounded-lg border border-[var(--app-border)]">
+            <table className="w-full table-fixed text-left text-sm">{children}</table>
           </div>
         ),
         thead: ({ children }) => <thead className="bg-[var(--app-surface)]/60">{children}</thead>,
         th: ({ children }) => (
-          <th className="px-3 py-2 text-xs font-medium uppercase tracking-wide text-[var(--app-text-secondary)]">
+          <th className="break-words px-3 py-2 text-xs font-medium uppercase tracking-wide text-[var(--app-text-secondary)]">
             {children}
           </th>
         ),
         td: ({ children }) => (
-          <td className="border-t border-[var(--app-border-soft)] px-3 py-2 align-top text-[var(--app-text-primary)]">
+          <td className="break-words border-t border-[var(--app-border-soft)] px-3 py-2 align-top text-[var(--app-text-primary)]">
             {children}
           </td>
         ),

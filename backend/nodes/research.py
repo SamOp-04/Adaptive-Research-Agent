@@ -141,6 +141,9 @@ def topical_relevance_score(root_query: str, search_question: str, finding: Sour
     if len(root_terms) <= 2 and matched_root_terms:
         return 0.5
 
+    if len(root_terms) == 1:
+        return 0.2
+
     return 0.0
 
 
@@ -170,7 +173,7 @@ def _normalize_term(term: str) -> str:
     normalized = term.strip("'").replace("'s", "")
     if len(normalized) > 4 and normalized.endswith("ies"):
         return f"{normalized[:-3]}y"
-    if len(normalized) > 4 and normalized.endswith("es"):
+    if len(normalized) > 4 and normalized.endswith(("sses", "xes", "zes", "ches", "shes")):
         return normalized[:-2]
     if len(normalized) > 3 and normalized.endswith("s"):
         return normalized[:-1]

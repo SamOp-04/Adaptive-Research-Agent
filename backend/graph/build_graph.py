@@ -45,7 +45,20 @@ async def stream_research_graph(
         conversation_context=conversation_context,
     )
 
-    for step, message, node in _nodes_for_state(state):
+    intent_step, intent_message, intent_node = NODE_SEQUENCE[0]
+    started = make_step_event(intent_step, "running", intent_message)
+    state["events"].append(started)
+    yield started
+    try:
+        state.update(await _call_node(intent_node, state))
+        completed = make_step_event(intent_step, "completed", f"{intent_message} complete")
+    except Exception as exc:  # pragma: no cover - live stream guard
+        state.setdefault("errors", []).append(str(exc))
+        completed = make_step_event(intent_step, "failed", str(exc))
+    state["events"].append(completed)
+    yield completed
+
+    for step, message, node in _nodes_after_intent(state):
         started = make_step_event(step, "running", message)
         state["events"].append(started)
         yield started
@@ -89,7 +102,16 @@ async def run_research_graph(
         conversation_context=conversation_context,
     )
 
-    for step, message, node in _nodes_for_state(state):
+    intent_step, intent_message, intent_node = NODE_SEQUENCE[0]
+    state["events"].append(make_step_event(intent_step, "running", intent_message))
+    try:
+        state.update(await _call_node(intent_node, state))
+        state["events"].append(make_step_event(intent_step, "completed", f"{intent_message} complete"))
+    except Exception as exc:
+        state.setdefault("errors", []).append(str(exc))
+        state["events"].append(make_step_event(intent_step, "failed", str(exc)))
+
+    for step, message, node in _nodes_after_intent(state):
         state["events"].append(make_step_event(step, "running", message))
         try:
             state.update(await _call_node(node, state))
@@ -101,14 +123,11 @@ async def run_research_graph(
     return state
 
 
-def _nodes_for_state(state: ResearchState) -> list[tuple[str, str, Node]]:
+def _nodes_after_intent(state: ResearchState) -> list[tuple[str, str, Node]]:
+    """Nodes to run once intent classification has actually populated needs_research."""
     if state.get("needs_research", True):
-        return NODE_SEQUENCE
-    return [
-        NODE_SEQUENCE[0],
-        NODE_SEQUENCE[3],
-        NODE_SEQUENCE[4],
-    ]
+        return NODE_SEQUENCE[1:]
+    return [NODE_SEQUENCE[3], NODE_SEQUENCE[4]]
 
 
 def _route_after_intent(state: ResearchState) -> str:

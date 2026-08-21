@@ -96,6 +96,57 @@ function normalizeMarkdown(content: string) {
     .replace(/\\`/g, "`");
 }
 
+function CodeBlock({ language, code }: { language: string; code: string }) {
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!copied) return;
+    const timer = window.setTimeout(() => setCopied(false), 1400);
+    return () => window.clearTimeout(timer);
+  }, [copied]);
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopied(true);
+    } catch {
+      setCopied(false);
+    }
+  }
+
+  return (
+    <div className="group/code relative my-3">
+      <button
+        type="button"
+        onClick={handleCopy}
+        className="absolute right-2 top-2 z-10 inline-flex items-center gap-1.5 rounded-lg border border-[var(--app-border)] bg-[var(--app-panel)] px-2 py-1 text-xs font-medium text-[var(--app-text-secondary)] opacity-0 shadow-floating transition hover:text-[var(--app-text-primary)] group-hover/code:opacity-100 focus-visible:opacity-100"
+        aria-label="Copy code"
+      >
+        {copied ? <Check className="h-3.5 w-3.5" /> : <ClipboardCopy className="h-3.5 w-3.5" />}
+        {copied ? "Copied" : "Copy"}
+      </button>
+      <SyntaxHighlighter
+        style={vscDarkPlus}
+        language={language}
+        PreTag="div"
+        customStyle={{
+          margin: 0,
+          borderRadius: "0.75rem",
+          border: "1px solid var(--app-border)",
+          background: "var(--app-panel)",
+        }}
+        codeTagProps={{
+          style: {
+            fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace',
+          },
+        }}
+      >
+        {code}
+      </SyntaxHighlighter>
+    </div>
+  );
+}
+
 function MarkdownContent({ content }: { content: string }) {
   return (
     <Markdown
@@ -164,28 +215,7 @@ function MarkdownContent({ content }: { content: string }) {
             );
           }
 
-          return (
-            <SyntaxHighlighter
-              style={vscDarkPlus}
-              language={match?.[1] ?? "text"}
-              PreTag="div"
-              customStyle={{
-                marginTop: "0.75rem",
-                marginBottom: "0.75rem",
-                borderRadius: "0.75rem",
-                border: "1px solid var(--app-border)",
-                background: "var(--app-panel)",
-              }}
-              codeTagProps={{
-                style: {
-                  fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace',
-                },
-              }}
-              {...props}
-            >
-              {text}
-            </SyntaxHighlighter>
-          );
+          return <CodeBlock language={match?.[1] ?? "text"} code={text} />;
         },
       }}
     >

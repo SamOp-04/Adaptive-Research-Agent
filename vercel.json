@@ -1,0 +1,8 @@
+{
+  "functions": {
+    "main.py": {
+      "includeFiles": "backend/**",
+      "maxDuration": 300
+    }
+  }
+}

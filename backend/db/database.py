@@ -4,6 +4,7 @@ from collections.abc import AsyncGenerator
 
 from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.pool import NullPool
 
 from backend.config.settings import get_settings
 
@@ -22,7 +23,11 @@ _session_local: async_sessionmaker[AsyncSession] | None = None
 def get_engine() -> AsyncEngine:
     global _engine
     if _engine is None:
-        _engine = create_async_engine(DATABASE_URL, echo=False)
+        if DATABASE_URL.startswith("sqlite"):
+            _engine = create_async_engine(DATABASE_URL, echo=False)
+        else:
+            # Serverless: no persistent pool; the DB provider's pooler handles connections.
+            _engine = create_async_engine(DATABASE_URL, echo=False, poolclass=NullPool)
     return _engine
 
 

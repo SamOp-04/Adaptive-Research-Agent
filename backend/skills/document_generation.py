@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from uuid import uuid4
 
@@ -8,7 +9,11 @@ from backend.files.pdf_generator import write_pdf
 from backend.graph.state import OutputType, SourceFinding
 
 
-GENERATED_FILES_DIR = Path(__file__).resolve().parents[1] / "generated_files"
+GENERATED_FILES_DIR = (
+    Path("/tmp/generated_files")
+    if os.environ.get("VERCEL")
+    else Path(__file__).resolve().parents[1] / "generated_files"
+)
 
 
 def generate_document(

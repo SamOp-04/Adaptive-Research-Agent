@@ -304,13 +304,26 @@ async def _build_artifact(
     if output_type in ("docx", "pdf"):
         from backend.skills.document_generation import generate_document
 
-        path = generate_document(
-            state.get("answer", ""),
-            output_type=output_type,
-            title=state.get("query", "Adaptive Research Report"),
-            key_findings=state.get("key_findings", []),
-            sources=findings,
-        )
+        try:
+            path = generate_document(
+                state.get("answer", ""),
+                output_type=output_type,
+                title=state.get("query", "Adaptive Research Report"),
+                key_findings=state.get("key_findings", []),
+                sources=findings,
+            )
+        except (ImportError, OSError):
+            # PDF engine (WeasyPrint) unavailable, e.g. on serverless hosts: fall back to DOCX.
+            if output_type != "pdf":
+                raise
+            output_type = "docx"
+            path = generate_document(
+                state.get("answer", ""),
+                output_type=output_type,
+                title=state.get("query", "Adaptive Research Report"),
+                key_findings=state.get("key_findings", []),
+                sources=findings,
+            )
         return {
             "type": output_type,
             "href": f"/files/{path.name}",

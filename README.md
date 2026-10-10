@@ -15,6 +15,7 @@ Ask a question. The agent classifies your intent, plans sub-questions, searches 
   <img alt="Postgres" src="https://img.shields.io/badge/Postgres-Supabase%20%7C%20Neon-4169E1?logo=postgresql&logoColor=white" />
   <img alt="Ollama" src="https://img.shields.io/badge/LLM-Ollama-111111?logo=ollama&logoColor=white" />
   <img alt="Deploy" src="https://img.shields.io/badge/Deploy-Vercel-000000?logo=vercel&logoColor=white" />
+  <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-green.svg" />
 </p>
 
 </div>
@@ -265,7 +266,7 @@ Adaptive-Research-Agent/
 ### 1. Clone and install the backend
 
 ```bash
-git clone https://github.com/<your-username>/Adaptive-Research-Agent.git
+git clone https://github.com/SamOp-04/Adaptive-Research-Agent.git
 cd Adaptive-Research-Agent
 
 python -m venv .venv
@@ -449,7 +450,7 @@ The suite covers intent classification, credibility scoring, the research node, 
 
 ## License
 
-No license file has been added yet. Add a `LICENSE` file (for example MIT) before making the repository public.
+Released under the [MIT License](LICENSE).
 
 ---
 
